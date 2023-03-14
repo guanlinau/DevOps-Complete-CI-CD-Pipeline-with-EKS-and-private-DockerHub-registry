@@ -136,6 +136,7 @@ pipeline {
                       sh "kubectl create secret docker-registry my-registry-key --docker-server=docker.io --docker-username=$USER --docker-password=$PASS"
                   }
                   sh 'envsubst < kubernetes/deployment.yaml | kubectl apply -f -'
+                  sh 'envsubst < kubernetes/service.yaml | kubectl apply -f -'
 
                 }
             }
