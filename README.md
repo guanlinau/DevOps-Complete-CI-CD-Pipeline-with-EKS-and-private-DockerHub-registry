@@ -12,13 +12,13 @@ Kubernetes, Jenkins, AWS EKS, Docker Hub, Java, Maven, Linux, Docker,Git
 
 3-So the complete CI/CD project we build has the following configuration:
 
-   a. CI step: Increment version
-   
-   b. CI step: Build artifact for Java Maven application
-   
-   c. CI step: Build and push Docker image to DockerHub
-   
-   d. CD step: Deploy new application version to EKS cluster e. CD step: Commit the version update
+a. CI step: Increment version
+
+b. CI step: Build artifact for Java Maven application
+
+c. CI step: Build and push Docker image to DockerHub
+
+d. CD step: Deploy new application version to EKS cluster e. CD step: Commit the version update
 
 ### Instructions:
 
@@ -83,6 +83,8 @@ spec:
 
 ```
 
+#!/usr/bin/env groovy
+
 pipeline {
     agent any
     tools {
@@ -117,46 +119,40 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
                         sh "docker build -t nanajanashia/demo-app:${IMAGE_NAME} ."
                         sh "echo $PASS | docker login -u $USER --password-stdin"
-                        sh "docker push nanajanashia/demo-app:${IMAGE_NAME}"
+                        sh "docker push jason8746/my-app:${IMAGE_NAME}"
                     }
                 }
             }
         }
         stage('deploy') {
-            environment {
-                AWS_ACCESS_KEY_ID = credentials('jenkins_aws_access_key_id')
-                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
-                APP_NAME = 'java-maven-app'
-            }
-
             steps {
                 script {
-
-                  withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-                      sh "kubectl create secret docker-registry my-registry-key --docker-server=docker.io --docker-username=$USER --docker-password=$PASS"
-                  }
-                  sh 'envsubst < kubernetes/deployment.yaml | kubectl apply -f -'
-                  sh 'envsubst < kubernetes/service.yaml | kubectl apply -f -'
-
+                    withKubeConfig([credentialsId: 'k8s-credentials', serverUrl: 'https://7293fae4-4c9d-4629-bc82-262d0a2b8e3c.eu-central-2.linodelke.net']) {
+                        withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                            sh "kubectl create secret docker-registry my-registry-key --docker-server=docker.io --docker-username=$USER --docker-password=$PASS"
+                        }
+                        sh 'envsubst < kubernetes/deployment.yaml | kubectl apply -f -'
+                    }
                 }
             }
         }
         stage('commit version update') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'gitlab-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                    withCredentials([usernamePassword(credentialsId: 'Jenkins-github-pat', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
                         // git config here for the first time run
-                        sh 'git config --global user.email "jenkins@example.com"'
-                        sh 'git config --global user.name "jenkins"'
+                        sh 'git config --global user.email "jason2019au@gmail.com"'
+                        sh 'git config --global user.name "jason"'
 
-                        sh "git remote set-url origin https://${USER}:${PASS}@gitlab.com/nanuchi/java-maven-app.git"
+                        sh "git remote set-url origin https://${USER}:${PASS}@github.com/CGL-DevOps/java-maven-app.git"
                         sh 'git add .'
-                        sh 'git commit -m "ci: version bump"'
-                        sh 'git push origin HEAD:jenkins-jobs'
+                        sh 'git commit -m "ci: version bump${BUILD_NUMBER}"'
+                        sh 'git push origin HEAD:master'
                     }
                 }
             }
         }
     }
 }
+
 ```
